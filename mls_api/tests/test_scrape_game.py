@@ -31,10 +31,11 @@ class TestScrapeGame(TestCase):
         super(TestScrapeGame, self).tearDown()
 
     def _create_requests_mock_return(self, url='http://www.example.com/stats',
-                                     status_code=200):
+                                     status_code=200,
+                                     html=None):
         requests_mock = Mock()
         requests_mock.get.return_value = Mock(
-            content=self.stat_html,
+            content=html if html else self.stat_html,
             status_code=status_code,
             url=url,
         )
@@ -156,3 +157,15 @@ class TestScrapeGame(TestCase):
             models.StatSet.objects.get(team__name='Chicago Fire').shots_on_target,
             8
         )
+
+    def test_find_urls(self):
+        ''' Tests the find urls functionality of scrape_game '''
+        html = open(
+            os.path.join(os.path.dirname(__file__), 'results_map.html')
+        ).read()
+        self._create_requests_mock_return(html=html)
+        self.command.year = 2013
+        links = self.command._find_urls()
+        assert links
+        # HTML dump we have has 77 stats links in it
+        self.assertEqual(len(links), 77)
