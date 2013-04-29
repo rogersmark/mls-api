@@ -1,5 +1,9 @@
 import re
 from optparse import make_option
+from datetime import datetime
+
+import requests
+from BeautifulSoup import BeautifulSoup
 
 from django.core.management.base import BaseCommand, CommandError
 from django.template.defaultfilters import slugify
@@ -18,14 +22,43 @@ class Command(BaseCommand):
             dest='force',
             help='With force, will overwrite any currently stored game data'
         ),
+        make_option(
+            '-y', '--year',
+            dest='year',
+            help='The year of the MLS season you wish to parse',
+            default='2013',
+        )
     )
 
+    def _find_urls(self):
+        ''' Finds result URLs from http://www.mlssoccer.com/results/ '''
+        resp = requests.get(
+            'http://www.mlssoccer.com/results/%s' % self.year)
+        content = BeautifulSoup(resp.content)
+        stats = content.findAll('div', {'class': 'stats-table'})[0]
+        table = stats.findChildren('table')[0]
+        links = table.findChildren('a')
+        valid_links = []
+        for link in links:
+            if link.parent.attrs[0][1] == 'notplayed':
+                # Skip unplayed games
+                continue
+            href = '%s/stats' % link.attrs[-1][-1]
+            if href not in valid_links:
+                valid_links.append(href)
+
+        return valid_links
+
     def handle(self, *args, **options):
-        if not args:
-            raise CommandError('Command requires a link to post game stats')
         self.force = options['force'] if options['force'] else False
+        self.year = options['year']
+        if int(self.year) > datetime.now().year + 1:
+            raise CommandError('Invalid Year')
+        self.urls = args
+        if not self.urls:
+            self.urls = self._find_urls()
         failed_urls = []
-        for url in args:
+        for url in self.urls:
             self.stdout.write('Scraping %s.' % url)
             try:
                 self._parse_game_stats(url)
@@ -69,7 +102,9 @@ class Command(BaseCommand):
             raise
 
         competition, created = models.Competition.objects.get_or_create(
-            name='MLS 2013', slug='mls-2013', year='2013')
+            name='MLS %s' % self.year,
+            slug='mls-%s' % self.year,
+            year=self.year)
         self.game = models.Game(
             stat_link=url,
             competition=competition,
