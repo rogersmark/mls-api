@@ -3,6 +3,7 @@ from mock import Mock
 from datetime import datetime
 
 from django.test import TestCase
+from django.core.management.base import CommandError
 
 from mls_scraper import mls_scraper
 from mls_api import models
@@ -157,6 +158,32 @@ class TestScrapeGame(TestCase):
             models.StatSet.objects.get(team__name='Chicago Fire').shots_on_target,
             8
         )
+
+    def test_handle(self):
+        ''' Test the functionality of the main entry point, Command.handle '''
+        self.command._parse_game_stats = Mock()
+        self.command._find_urls = Mock()
+        self.command._find_urls.return_value = [1, 2, 3]
+        self.command.handle()
+        self.assertEqual(self.command.urls, [1, 2, 3])
+        self.assertEqual(self.command.year, 2013)
+        self.assertEqual(self.command.force, False)
+
+    def test_handle_invalid_year(self):
+        ''' Test handle with an invalid year '''
+        self.command._parse_game_stats = Mock()
+        self.command._find_urls = Mock()
+        self.command._find_urls.return_value = [1, 2, 3]
+        with self.assertRaises(CommandError):
+            self.command.handle(year='2014')
+
+    def test_handle_provided_urls(self):
+        ''' Test handle with urls provided from the command line '''
+        self.command._parse_game_stats = Mock()
+        self.command._find_urls = Mock()
+        self.command._find_urls.return_value = [1, 2, 3]
+        self.command.handle('link1', 'link2')
+        self.assertEqual(self.command.urls, ('link1', 'link2'))
 
     def test_find_urls(self):
         ''' Tests the find urls functionality of scrape_game '''

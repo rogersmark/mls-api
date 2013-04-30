@@ -1,4 +1,5 @@
 import re
+import logging
 from optparse import make_option
 from datetime import datetime
 
@@ -50,25 +51,27 @@ class Command(BaseCommand):
         return valid_links
 
     def handle(self, *args, **options):
-        self.force = options['force'] if options['force'] else False
-        self.year = options['year']
-        if int(self.year) > datetime.now().year + 1:
+        self.logger = logging.getLogger('scraper')
+        self.force = options['force'] if options.get('force') else False
+        self.year = options.get('year', 2013)
+        if int(self.year) > datetime.now().year or int(self.year) < 2011:
             raise CommandError('Invalid Year')
         self.urls = args
         if not self.urls:
             self.urls = self._find_urls()
         failed_urls = []
+        self.stdout.write('Starting scraper')
         for url in self.urls:
-            self.stdout.write('Scraping %s.' % url)
+            self.logger.info('Scraping %s.', url)
             try:
                 self._parse_game_stats(url)
-            except Exception as e:
+            except:
                 failed_urls.append(url)
-                self.stdout.write('Failed to scrape %s.' % url)
-                print e
+                self.logger.exception('Failed to scrape %s.', url)
             else:
-                self.stdout.write('Completed scraping %s.' % url)
+                self.logger.info('Completed scraping %s.' % url)
 
+        self.stdout.write('Finished scraper')
         if failed_urls:
             self.stderr.write('Failures: ')
             for url in failed_urls:
@@ -92,14 +95,14 @@ class Command(BaseCommand):
         if self.force:
             models.Game.objects.filter(stat_link=url).delete()
         elif models.Game.objects.filter(stat_link=url).exists():
-            self.stderr.write('Game already exists, skipping')
+            self.logger.error('Game %s already exists, skipping', url)
             return
 
         try:
-            self.parsed_stats = GameStatSet(url)
+            self.parsed_stats = GameStatSet(url, logger=self.logger)
         except:
-            self.stderr.write('Failed to parse')
-            raise
+            self.logger.exception('Failed to parse %s.', url)
+            return
 
         competition, created = models.Competition.objects.get_or_create(
             name='MLS %s' % self.year,
