@@ -9,7 +9,7 @@ from BeautifulSoup import BeautifulSoup
 from django.core.management.base import BaseCommand, CommandError
 from django.template.defaultfilters import slugify
 
-from mls_scraper.mls_scraper import GameStatSet
+from mls_scraper.parser import MLSStatsParser
 from mls_api import models
 
 
@@ -100,7 +100,7 @@ class Command(BaseCommand):
             return
 
         try:
-            self.parsed_stats = GameStatSet(url, logger=self.logger)
+            self.parsed_stats = MLSStatsParser(url, logger=self.logger)
         except:
             self.logger.exception('Failed to parse %s.', url)
             return
@@ -112,16 +112,16 @@ class Command(BaseCommand):
         self.game = models.Game(
             stat_link=url,
             competition=competition,
-            start_time=self.parsed_stats.game_date
+            start_time=self.parsed_stats.game.game_date
         )
         self._handle_teams()
         self.game.save()
         self._handle_players(
-            self.parsed_stats.home_team,
+            self.parsed_stats.game.home_team,
             self.game.home_team
         )
         self._handle_players(
-            self.parsed_stats.away_team,
+            self.parsed_stats.game.away_team,
             self.game.away_team
         )
         self.game.save()
@@ -134,41 +134,39 @@ class Command(BaseCommand):
 
     def _handle_teams(self):
         home_team, created = models.Team.objects.get_or_create(
-            name=self.parsed_stats.home_team.name,
-            slug=slugify(self.parsed_stats.home_team.name)
+            name=self.parsed_stats.game.home_team.name,
+            slug=slugify(self.parsed_stats.game.home_team.name)
         )
         away_team, created = models.Team.objects.get_or_create(
-            name=self.parsed_stats.away_team.name,
-            slug=slugify(self.parsed_stats.away_team.name)
+            name=self.parsed_stats.game.away_team.name,
+            slug=slugify(self.parsed_stats.game.away_team.name)
         )
         self.game.home_team = home_team
         self.game.away_team = away_team
 
     def _handle_players(self, team_stats, team):
         for player in team_stats.players + team_stats.keepers:
-            first_name, last_name = self._get_parsed_name(
-                player['Player'])
             player_obj, created = models.Player.objects.get_or_create(
-                first_name=first_name,
-                last_name=last_name,
+                first_name=player.first_name,
+                last_name=player.last_name,
                 team=team,
                 defaults={
-                    'position': player.get('POS', 'S'),
-                    'number': player['#']
+                    'position': player.position,
+                    'number': player.number
                 }
             )
             models.GamePlayer.objects.get_or_create(
                 game=self.game,
                 team=team,
                 player=player_obj,
-                position=player.get('POS', 'S')
+                position=player.position,
             )
 
     def _handle_goals(self):
         ''' Parse goal events '''
-        for goal in self.parsed_stats.goals:
+        for goal in self.parsed_stats.game.goals:
             team = models.Team.objects.get(
-                name=GameStatSet.abbreviation_map[goal['Club']]
+                name=self.parsed_stats.game.abbreviation_map[goal['Club']]
             )
             first_name, last_name = self._get_parsed_name(
                 goal['Player'])
@@ -209,9 +207,9 @@ class Command(BaseCommand):
 
     def _handle_bookings(self):
         ''' Handle any bookings that occur in a match '''
-        for booking in self.parsed_stats.disciplinary_events:
+        for booking in self.parsed_stats.game.disciplinary_events:
             team = models.Team.objects.get(
-                name=GameStatSet.abbreviation_map[booking['Club']]
+                name=self.parsed_stats.game.abbreviation_map[booking['Club']]
             )
             first_name, last_name = self._get_parsed_name(
                 booking['Player'])
@@ -260,9 +258,9 @@ class Command(BaseCommand):
         ''' Handle all of the creation of StatSet objects '''
         self._parse_team_stats(
             self.game.home_team,
-            self.parsed_stats.home_team.stats
+            self.parsed_stats.game.home_team.stats
         )
         self._parse_team_stats(
             self.game.away_team,
-            self.parsed_stats.away_team.stats
+            self.parsed_stats.game.away_team.stats
         )

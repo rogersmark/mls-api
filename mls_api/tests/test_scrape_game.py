@@ -5,7 +5,7 @@ from datetime import datetime
 from django.test import TestCase
 from django.core.management.base import CommandError
 
-from mls_scraper import mls_scraper
+from mls_scraper import parser
 from mls_api import models
 from mls_api.management.commands import scrape_game
 
@@ -15,12 +15,11 @@ class TestScrapeGame(TestCase):
 
     def setUp(self):
         super(TestScrapeGame, self).setUp()
-        self.orig_requests = mls_scraper.requests
+        self.orig_requests = parser.requests
         self.stat_html = open(
             os.path.join(os.path.dirname(__file__), 'test_stats.html')
         ).read()
-        mls_scraper.requests = Mock()
-        self.game = mls_scraper.GameStatSet()
+        parser.requests = Mock()
         self.command = scrape_game.Command()
         self.command.force = False
         self.command.stderr = Mock()
@@ -28,7 +27,7 @@ class TestScrapeGame(TestCase):
         self.competition = models.Competition.objects.get(slug='mls-2013')
 
     def tearDown(self):
-        mls_scraper.requests = self.orig_requests
+        parser.requests = self.orig_requests
         super(TestScrapeGame, self).tearDown()
 
     def _create_requests_mock_return(self, url='http://www.example.com/stats',
@@ -40,7 +39,7 @@ class TestScrapeGame(TestCase):
             status_code=status_code,
             url=url,
         )
-        mls_scraper.requests = requests_mock
+        parser.requests = requests_mock
 
     def _init_game_stats(self):
         self.command.game = models.Game(
@@ -48,7 +47,7 @@ class TestScrapeGame(TestCase):
             stat_link='http://www.example.com/stats',
             start_time=datetime.now()
         )
-        self.command.parsed_stats = mls_scraper.GameStatSet(
+        self.command.parsed_stats = parser.MLSStatsParser(
             'http://www.example.com/stats')
 
     def test_parse_game_stats(self):
@@ -83,7 +82,7 @@ class TestScrapeGame(TestCase):
         self.command._handle_teams()
         self.command.game.save()
         self.command._handle_players(
-            self.command.parsed_stats.home_team,
+            self.command.parsed_stats.game.home_team,
             self.command.game.home_team
         )
         self.assertEqual(
@@ -98,11 +97,11 @@ class TestScrapeGame(TestCase):
         self.command._handle_teams()
         self.command.game.save()
         self.command._handle_players(
-            self.command.parsed_stats.home_team,
+            self.command.parsed_stats.game.home_team,
             self.command.game.home_team
         )
         self.command._handle_players(
-            self.command.parsed_stats.away_team,
+            self.command.parsed_stats.game.away_team,
             self.command.game.away_team
         )
         self.command._handle_goals()
@@ -118,11 +117,11 @@ class TestScrapeGame(TestCase):
         self.command._handle_teams()
         self.command.game.save()
         self.command._handle_players(
-            self.command.parsed_stats.home_team,
+            self.command.parsed_stats.game.home_team,
             self.command.game.home_team
         )
         self.command._handle_players(
-            self.command.parsed_stats.away_team,
+            self.command.parsed_stats.game.away_team,
             self.command.game.away_team
         )
         self.command._handle_bookings()
@@ -138,11 +137,11 @@ class TestScrapeGame(TestCase):
         self.command._handle_teams()
         self.command.game.save()
         self.command._handle_players(
-            self.command.parsed_stats.home_team,
+            self.command.parsed_stats.game.home_team,
             self.command.game.home_team
         )
         self.command._handle_players(
-            self.command.parsed_stats.away_team,
+            self.command.parsed_stats.game.away_team,
             self.command.game.away_team
         )
         self.command._handle_team_stats()
