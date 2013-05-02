@@ -10,12 +10,12 @@ class Migration(SchemaMigration):
     def forwards(self, orm):
         # Adding field 'Goal.game'
         db.add_column(u'mls_api_goal', 'game',
-                      self.gf('django.db.models.fields.related.ForeignKey')(default='', to=orm['mls_api.Game']),
+                      self.gf('django.db.models.fields.related.ForeignKey')(to=orm['mls_api.Game']),
                       keep_default=False)
 
         # Adding field 'Booking.game'
         db.add_column(u'mls_api_booking', 'game',
-                      self.gf('django.db.models.fields.related.ForeignKey')(default='', to=orm['mls_api.Game']),
+                      self.gf('django.db.models.fields.related.ForeignKey')(to=orm['mls_api.Game']),
                       keep_default=False)
 
 
