@@ -93,6 +93,7 @@ class Command(BaseCommand):
     def _parse_game_stats(self, url):
         ''' Engine of this operation '''
         if self.force:
+            # FYI, this will cascade and take a lot of stuff with it.
             models.Game.objects.filter(stat_link=url).delete()
         elif models.Game.objects.filter(stat_link=url).exists():
             self.logger.error('Game %s already exists, skipping', url)
@@ -151,8 +152,10 @@ class Command(BaseCommand):
                 first_name=first_name,
                 last_name=last_name,
                 team=team,
-                number=player['#'],
-                defaults={'position': player.get('POS', 'S')}
+                defaults={
+                    'position': player.get('POS', 'S'),
+                    'number': player['#']
+                }
             )
             models.GamePlayer.objects.get_or_create(
                 game=self.game,
