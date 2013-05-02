@@ -159,8 +159,8 @@ class Game(BaseModel):
 
 class Substitution(BaseModel):
     ''' Used for tracking substitutions -- currently unused '''
-    out_player = models.ForeignKey(Player, related_name='subbed_out')
-    in_player = models.ForeignKey(Player, related_name='subbed_in')
+    out_player = models.ForeignKey('GamePlayer', related_name='subbed_out')
+    in_player = models.ForeignKey('GamePlayer', related_name='subbed_in')
     team = models.ForeignKey(Team)
     minute = models.IntegerField()
 
