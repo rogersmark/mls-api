@@ -16,6 +16,8 @@ class TestScrapeGame(TestCase):
     def setUp(self):
         super(TestScrapeGame, self).setUp()
         self.orig_requests = parser.requests
+        self.orig_cmd_requests = scrape_game.requests
+        scrape_game.requests = Mock()
         self.stat_html = open(
             os.path.join(os.path.dirname(__file__), 'test_stats.html')
         ).read()
@@ -28,18 +30,23 @@ class TestScrapeGame(TestCase):
 
     def tearDown(self):
         parser.requests = self.orig_requests
+        scrape_game.requests = self.orig_cmd_requests
         super(TestScrapeGame, self).tearDown()
 
     def _create_requests_mock_return(self, url='http://www.example.com/stats',
                                      status_code=200,
-                                     html=None):
+                                     html=None,
+                                     cmd_req=False):
         requests_mock = Mock()
         requests_mock.get.return_value = Mock(
             content=html if html else self.stat_html,
             status_code=status_code,
             url=url,
         )
-        parser.requests = requests_mock
+        if cmd_req:
+            scrape_game.requests = requests_mock
+        else:
+            parser.requests = requests_mock
 
     def _init_game_stats(self):
         self.command.game = models.Game(
@@ -189,7 +196,7 @@ class TestScrapeGame(TestCase):
         html = open(
             os.path.join(os.path.dirname(__file__), 'results_map.html')
         ).read()
-        self._create_requests_mock_return(html=html)
+        self._create_requests_mock_return(html=html, cmd_req=True)
         self.command.year = 2013
         links = self.command._find_urls()
         assert links

@@ -9,7 +9,7 @@ from BeautifulSoup import BeautifulSoup
 from django.core.management.base import BaseCommand, CommandError
 from django.template.defaultfilters import slugify
 
-from mls_scraper.parser import MLSStatsParser
+from mls_scraper import parser
 from mls_api import models
 
 
@@ -100,7 +100,7 @@ class Command(BaseCommand):
             return
 
         try:
-            self.parsed_stats = MLSStatsParser(url, logger=self.logger)
+            self.parsed_stats = parser.MLSStatsParser(url, logger=self.logger)
         except:
             self.logger.exception('Failed to parse %s.', url)
             return
@@ -166,13 +166,11 @@ class Command(BaseCommand):
         ''' Parse goal events '''
         for goal in self.parsed_stats.game.goals:
             team = models.Team.objects.get(
-                name=self.parsed_stats.game.abbreviation_map[goal['Club']]
+                name=goal.team.name
             )
-            first_name, last_name = self._get_parsed_name(
-                goal['Player'])
             player = models.Player.objects.get(
-                first_name=first_name,
-                last_name=last_name,
+                first_name=goal.player.first_name,
+                last_name=goal.player.last_name,
                 team=team
             )
             gp = models.GamePlayer.objects.get(
@@ -181,20 +179,15 @@ class Command(BaseCommand):
                 team=team
             )
             goal_obj, created = models.Goal.objects.get_or_create(
-                minute=re.search('\d+', goal['Time']).group(),
+                minute=goal.time,
                 game=self.game,
                 player=gp,
-                own_goal=True if re.search('(OG)', goal['Player']) else False
+                own_goal=True if re.search('(OG)', goal.player.name) else False
             )
-            assists = goal.get(
-                '(Assisted by)', '').lstrip('(').rstrip(')').split(',')
-            if assists == ['']:
-                assists = []
-            for assist in assists:
-                first_name, last_name = self._get_parsed_name(assist)
+            for assist in goal.assisted_by:
                 player = models.Player.objects.get(
-                    first_name=first_name,
-                    last_name=last_name,
+                    first_name=assist.first_name,
+                    last_name=assist.last_name,
                     team=team
                 )
                 gp = models.GamePlayer.objects.get(
@@ -209,13 +202,11 @@ class Command(BaseCommand):
         ''' Handle any bookings that occur in a match '''
         for booking in self.parsed_stats.game.disciplinary_events:
             team = models.Team.objects.get(
-                name=self.parsed_stats.game.abbreviation_map[booking['Club']]
+                name=booking.team.name
             )
-            first_name, last_name = self._get_parsed_name(
-                booking['Player'])
             player = models.Player.objects.get(
-                first_name=first_name,
-                last_name=last_name,
+                first_name=booking.player.first_name,
+                last_name=booking.player.last_name,
                 team=team
             )
             gp = models.GamePlayer.objects.get(
@@ -224,11 +215,11 @@ class Command(BaseCommand):
                 team=team
             )
             booking_obj, created = models.Booking.objects.get_or_create(
-                minute=re.search('\d+', booking['Time']).group(),
+                minute=booking.time,
                 game=self.game,
                 player=gp,
-                reason=booking['Reason'],
-                card_color=booking['card_color'],
+                reason=booking.reason,
+                card_color=booking.card_color,
             )
 
     def _parse_team_stats(self, team_obj, team_stats):
