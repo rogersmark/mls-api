@@ -117,6 +117,8 @@ class Command(BaseCommand):
         self.game.save()
         self._handle_team_stats()
         self.game.save()
+        self._handle_formations()
+        self.game.save()
 
     def _handle_teams(self):
         home_team, created = models.Team.objects.get_or_create(
@@ -240,4 +242,43 @@ class Command(BaseCommand):
         self._parse_team_stats(
             self.game.away_team,
             self.parsed_stats.game.away_team.stats
+        )
+
+    def _parse_formations(self, team, formation):
+        ''' Helper for creating the formation objects '''
+        formation_obj = models.Formation.objects.create(
+            game=self.game,
+            team=team
+        )
+        for count, line in enumerate(formation.players):
+            form_line = models.FormationLine.objects.create(
+                formation=formation_obj,
+                sort_order=count,
+            )
+            for inner_count, player in enumerate(line):
+                player = models.Player.objects.get(
+                    first_name=player.first_name,
+                    last_name=player.last_name,
+                    team=team
+                )
+                gp = models.GamePlayer.objects.get(
+                    player=player,
+                    game=self.game,
+                    team=team
+                )
+                models.FormationPlayer.objects.create(
+                    player=gp,
+                    line=form_line,
+                    sort_order=inner_count
+                )
+
+    def _handle_formations(self):
+        ''' Handles creating the formations for the match '''
+        self._parse_formations(
+            self.game.home_team,
+            self.parsed_stats.game.home_team.formation
+        )
+        self._parse_formations(
+            self.game.away_team,
+            self.parsed_stats.game.away_team.formation
         )

@@ -80,6 +80,7 @@ class TestScrapeGame(TestCase):
             '_handle_goals',
             '_handle_bookings',
             '_handle_team_stats',
+            '_handle_formations',
         ]
         assert methods_to_mock
         pre_mocks = []
@@ -226,3 +227,14 @@ class TestScrapeGame(TestCase):
         assert links
         # HTML dump we have has 77 stats links in it
         self.assertEqual(len(links), 77)
+
+    def test_handle_formations(self):
+        ''' Test the formation creation functionality '''
+        self._create_requests_mock_return()
+        self.command.force = True
+        self.command.year = 2013
+        self.command._parse_game_stats('http://www.exmaple.com/stats')
+        self.assertEqual(models.Formation.objects.count(), 2)
+        fire_formation = models.Formation.objects.get(
+            team__slug='chicago-fire')
+        self.assertEqual(fire_formation.formation_str, '4-2-3-1')
