@@ -2,4 +2,8 @@ South==0.7.6
 mock==1.0.1
 requests==1.2.0
 BeautifulSoup==3.2.1
+nose==1.3.0
+nose-blockage==0.1.2
+coverage==3.6
+django-nose==1.1
 -e git+git@github.com:f4nt/mls-scraper.git#egg=mls_scraper

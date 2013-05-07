@@ -76,19 +76,6 @@ class Command(BaseCommand):
             for url in failed_urls:
                 self.stderr.write(url)
 
-    def _get_parsed_name(self, name):
-        ''' Takes a player name and generates first/last names '''
-        player_name = name.split()
-        first_name = ''
-        last_name = ''
-        if len(player_name) == 1:
-            first_name = last_name = player_name[0]
-        else:
-            first_name = player_name[0]
-            last_name = player_name[1]
-
-        return first_name, last_name
-
     def _parse_game_stats(self, url):
         ''' Engine of this operation '''
         if self.force:

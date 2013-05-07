@@ -1,4 +1,5 @@
 import os
+import logging
 from mock import Mock
 from datetime import datetime
 
@@ -26,6 +27,7 @@ class TestScrapeGame(TestCase):
         ).read()
         parser.requests = Mock()
         self.command = scrape_game.Command()
+        self.command.logger = logging.getLogger('testing')
         self.command.force = False
         self.command.stderr = Mock()
         self.command.stdout = Mock()
@@ -71,14 +73,24 @@ class TestScrapeGame(TestCase):
 
     def test_parse_game_stats(self):
         ''' Test the main engine behind the scraper tool '''
+        self._create_requests_mock_return()
+        self.command.year = 2013
         methods_to_mock = [
-            '_handle_teams',
             '_handle_players',
             '_handle_goals',
             '_handle_bookings',
             '_handle_team_stats',
         ]
         assert methods_to_mock
+        pre_mocks = []
+        for method in methods_to_mock:
+            pre_mocks.append(getattr(self.command, method))
+            setattr(self.command, method, Mock())
+
+        self.command._parse_game_stats('http://www.exmaple.com/stats')
+        for count, method in enumerate(methods_to_mock):
+            assert getattr(self.command, method).called
+            setattr(self.command, method, pre_mocks[count])
 
     def test_handle_teams(self):
         ''' Test the _handle_teams methods '''
