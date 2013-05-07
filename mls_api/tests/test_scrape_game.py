@@ -21,6 +21,9 @@ class TestScrapeGame(TestCase):
         self.stat_html = open(
             os.path.join(os.path.dirname(__file__), 'test_stats.html')
         ).read()
+        self.formation_html = open(
+            os.path.join(os.path.dirname(__file__), 'test_formation.html')
+        ).read()
         parser.requests = Mock()
         self.command = scrape_game.Command()
         self.command.force = False
@@ -38,11 +41,20 @@ class TestScrapeGame(TestCase):
                                      html=None,
                                      cmd_req=False):
         requests_mock = Mock()
-        requests_mock.get.return_value = Mock(
+        game_mock = Mock(
             content=html if html else self.stat_html,
             status_code=status_code,
-            url=url,
+            url=url
         )
+        formation_mock = Mock(
+            content=self.formation_html,
+            status_code=status_code,
+            url=url
+        )
+        requests_mock.get.side_effect = [
+            game_mock,
+            formation_mock
+        ]
         if cmd_req:
             scrape_game.requests = requests_mock
         else:

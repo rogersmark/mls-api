@@ -1,4 +1,3 @@
-import re
 import logging
 from optparse import make_option
 from datetime import datetime
@@ -182,7 +181,7 @@ class Command(BaseCommand):
                 minute=goal.time,
                 game=self.game,
                 player=gp,
-                own_goal=True if re.search('(OG)', goal.player.name) else False
+                own_goal=goal.own_goal
             )
             for assist in goal.assisted_by:
                 player = models.Player.objects.get(
