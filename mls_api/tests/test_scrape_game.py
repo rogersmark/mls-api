@@ -121,6 +121,14 @@ class TestScrapeGame(TestCase):
             models.Player.objects.count(),
             14
         )
+        self.assertEqual(
+            models.GamePlayer.objects.count(),
+            14
+        )
+        self.assertEqual(
+            models.PlayerStatLine.objects.count(),
+            14
+        )
 
     def test_handle_goals(self):
         ''' Tests the functionality of handling goals in the scraper '''

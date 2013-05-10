@@ -133,7 +133,7 @@ class Command(BaseCommand):
         self.game.away_team = away_team
 
     def _handle_players(self, team_stats, team):
-        for player in team_stats.players + team_stats.keepers:
+        for player in team_stats.players:
             player_obj, created = models.Player.objects.get_or_create(
                 first_name=player.first_name,
                 last_name=player.last_name,
@@ -143,11 +143,27 @@ class Command(BaseCommand):
                     'number': player.number
                 }
             )
-            models.GamePlayer.objects.get_or_create(
+            gp, created = models.GamePlayer.objects.get_or_create(
                 game=self.game,
                 team=team,
                 player=player_obj,
                 position=player.position,
+            )
+            # Feel bad about all the getattrs, but the Player objects
+            # coming in can be a bit unpredictable
+            models.PlayerStatLine.objects.get_or_create(
+                player=gp,
+                shots=getattr(player, 'shots', 0),
+                shots_on_goal=getattr(player, 'shots_on_goal', 0),
+                minutes=getattr(player, 'minutes', 0),
+                goals=getattr(player, 'goals', 0),
+                assists=getattr(player, 'assists', 0),
+                fouls_commited=getattr(player, 'fouls_commited', 0),
+                fouls_suffered=getattr(player, 'fouls_suffered', 0),
+                corners=getattr(player, 'corners', 0),
+                offsides=getattr(player, 'offsides', 0),
+                saves=getattr(player, 'saves', 0),
+                goals_against=getattr(player, 'goals_against', 0)
             )
 
     def _handle_goals(self):

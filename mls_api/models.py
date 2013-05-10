@@ -59,6 +59,26 @@ class Player(BaseModel):
         ordering = ('last_name', 'first_name')
 
 
+class PlayerStatLine(BaseModel):
+    ''' Used for collecting the stat line for a player in a game '''
+
+    player = models.ForeignKey('GamePlayer')
+    shots = models.IntegerField(default=0)
+    shots_on_goal = models.IntegerField(default=0)
+    minutes = models.IntegerField(default=0)
+    goals = models.IntegerField(default=0)
+    assists = models.IntegerField(default=0)
+    fouls_commited = models.IntegerField(default=0)
+    fouls_suffered = models.IntegerField(default=0)
+    corners = models.IntegerField(default=0)
+    offsides = models.IntegerField(default=0)
+    saves = models.IntegerField(default=0)
+    goals_against = models.IntegerField(default=0)
+
+    def __unicode__(self):
+        return u'Stats for %s' % self.player
+
+
 class GamePlayer(BaseModel):
     ''' Used for mapping players to specific games '''
 
