@@ -8,9 +8,10 @@ In order to install clone this repo, and run:
 
     python setup.py install
 
-Then add `mls_api` to your list of INSTALLED_APPS in your Django project. Then 
+Then add `mls_api` and `south` to your list of INSTALLED_APPS in your Django project. Then 
 just run:
 
+    python manage.py syncdb
     python manage.py migrate mls_api
 
 to add the necessary tables to your database. 
