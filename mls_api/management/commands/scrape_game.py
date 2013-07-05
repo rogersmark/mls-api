@@ -115,6 +115,8 @@ class Command(BaseCommand):
         self.game.save()
         self._handle_bookings()
         self.game.save()
+        self._handle_subs()
+        self.game.save()
         self._handle_team_stats()
         self.game.save()
         self._handle_formations()
@@ -224,6 +226,43 @@ class Command(BaseCommand):
                 player=gp,
                 reason=booking.reason,
                 card_color=booking.card_color,
+            )
+
+    def _handle_subs(self):
+        ''' Handle sub events from a match '''
+        for sub_event in self.parsed_stats.game.subs:
+            team = models.Team.objects.get(
+                name=sub_event.team.name
+            )
+            
+            player_on = models.Player.objects.get(
+                first_name = sub_event.player_on.first_name,
+                last_name = sub_event.player_off.last_name,
+                team = team
+            )
+            gp_on = models.GamePlayer.objects.get(
+                player=player_on,
+                game=self.game,
+                team=team
+            )
+
+            player_off = models.Player.objects.get(
+                first_name = sub_event.player_off.first_name,
+                last_name = sub_event.player_off.last_name,
+                team = team
+            )
+            gp_off = models.GamePlayer.objects.get(
+                player=player_off,
+                game=self.game,
+                team=team
+            )
+
+
+            substitution, created = models.Substitution.objects.get_or_create(
+                team=team,
+                in_player=gp_on,
+                out_player=gp_off,
+                minute=sub_event.time
             )
 
     def _parse_team_stats(self, team_obj, team_stats):
