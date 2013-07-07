@@ -81,6 +81,7 @@ class TestScrapeGame(TestCase):
             '_handle_bookings',
             '_handle_team_stats',
             '_handle_formations',
+            '_handle_subs',
         ]
         assert methods_to_mock
         pre_mocks = []
@@ -167,6 +168,32 @@ class TestScrapeGame(TestCase):
         self.command._handle_bookings()
         self.assertEqual(
             models.Booking.objects.count(),
+            3
+        )
+
+    def test_handle_subs(self):
+        ''' Test handling the creation of substitution events '''
+        self._create_requests_mock_return()
+        self._init_game_stats()
+        self.command._handle_teams()
+        self.command.game.save()
+        self.command._handle_players(
+            self.command.parsed_stats.game.home_team,
+            self.command.game.home_team
+        )
+        self.command._handle_players(
+            self.command.parsed_stats.game.away_team,
+            self.command.game.away_team
+        )
+        self.command._handle_subs()
+        self.assertEqual(
+            models.Substitution.objects.filter(
+                team=self.command.game.home_team).count(),
+            3
+        )
+        self.assertEqual(
+            models.Substitution.objects.filter(
+                team=self.command.game.away_team).count(),
             3
         )
 

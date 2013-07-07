@@ -234,11 +234,11 @@ class Command(BaseCommand):
             team = models.Team.objects.get(
                 name=sub_event.team.name
             )
-            
+
             player_on = models.Player.objects.get(
-                first_name = sub_event.player_on.first_name,
-                last_name = sub_event.player_off.last_name,
-                team = team
+                first_name=sub_event.player_on.first_name,
+                last_name=sub_event.player_on.last_name,
+                team=team
             )
             gp_on = models.GamePlayer.objects.get(
                 player=player_on,
@@ -247,16 +247,15 @@ class Command(BaseCommand):
             )
 
             player_off = models.Player.objects.get(
-                first_name = sub_event.player_off.first_name,
-                last_name = sub_event.player_off.last_name,
-                team = team
+                first_name=sub_event.player_off.first_name,
+                last_name=sub_event.player_off.last_name,
+                team=team
             )
             gp_off = models.GamePlayer.objects.get(
                 player=player_off,
                 game=self.game,
                 team=team
             )
-
 
             substitution, created = models.Substitution.objects.get_or_create(
                 team=team,
