@@ -74,12 +74,6 @@ class Command(BaseCommand):
 
         self.stdout.write('Starting scraper of %d matches' % queue.qsize())
         while not queue.empty():
-            self.logger.info(
-                '%s of %s jobs completed' % (
-                    len(self.urls) - queue.qsize(),
-                    len(self.urls)
-                )
-            )
             active_workers = self.workers if queue.qsize() > self.workers else queue.qsize()
             threads = []
             for x in range(active_workers):
@@ -96,6 +90,13 @@ class Command(BaseCommand):
                     if thread.isAlive():
                         active_threads.append(thread)
                 threads = active_threads
+
+            self.logger.info(
+                '%s of %s jobs completed' % (
+                    len(self.urls) - queue.qsize(),
+                    len(self.urls)
+                )
+            )
 
         self.stdout.write('Finished scraper')
         if failed_urls:
@@ -143,6 +144,7 @@ class ThreadedGameParser(threading.Thread):
             name='MLS %s' % self.year,
             slug='mls-%s' % self.year,
             year=self.year)
+        import ipdb; ipdb.set_trace() ### XXX BREAKPOINT
         self.game = models.Game(
             stat_link=url,
             competition=competition,
@@ -251,6 +253,10 @@ class ThreadedGameParser(threading.Thread):
                 )
                 goal_obj.assisted_by.add(gp)
                 goal_obj.save()
+
+        self.game.home_score = self.game._home_score
+        self.game.away_score = self.game._away_score
+        self.game.save()
 
     def _handle_bookings(self):
         ''' Handle any bookings that occur in a match '''
