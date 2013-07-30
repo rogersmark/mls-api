@@ -144,7 +144,6 @@ class ThreadedGameParser(threading.Thread):
             name='MLS %s' % self.year,
             slug='mls-%s' % self.year,
             year=self.year)
-        import ipdb; ipdb.set_trace() ### XXX BREAKPOINT
         self.game = models.Game(
             stat_link=url,
             competition=competition,
