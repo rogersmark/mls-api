@@ -1,4 +1,6 @@
 import logging
+import Queue
+import threading
 from optparse import make_option
 from datetime import datetime
 
@@ -27,7 +29,13 @@ class Command(BaseCommand):
             dest='year',
             help='The year of the MLS season you wish to parse',
             default='2013',
-        )
+        ),
+        make_option(
+            '-w', '--workers',
+            dest='workers',
+            help='Number of threads to scrape with (Be careful!)',
+            default=5
+        ),
     )
 
     def _find_urls(self):
@@ -53,28 +61,68 @@ class Command(BaseCommand):
         self.logger = logging.getLogger('scraper')
         self.force = options['force'] if options.get('force') else False
         self.year = options.get('year', 2013)
+        self.workers = int(options.get('workers', 5))
         if int(self.year) > datetime.now().year or int(self.year) < 2011:
             raise CommandError('Invalid Year')
         self.urls = args
         if not self.urls:
             self.urls = self._find_urls()
         failed_urls = []
-        self.stdout.write('Starting scraper')
+        queue = Queue.Queue()
         for url in self.urls:
-            self.logger.info('Scraping %s.', url)
-            try:
-                self._parse_game_stats(url)
-            except:
-                failed_urls.append(url)
-                self.logger.exception('Failed to scrape %s.', url)
-            else:
-                self.logger.info('Completed scraping %s.' % url)
+            queue.put(url)
+
+        self.stdout.write('Starting scraper of %d matches' % queue.qsize())
+        while not queue.empty():
+            self.logger.info(
+                '%s of %s jobs completed' % (
+                    len(self.urls) - queue.qsize(),
+                    len(self.urls)
+                )
+            )
+            active_workers = self.workers if queue.qsize() > self.workers else queue.qsize()
+            threads = []
+            for x in range(active_workers):
+                t = ThreadedGameParser(
+                    self.year, self.force, self.logger, queue
+                )
+                t.setDaemon(True)
+                t.start()
+                threads.append(t)
+
+            while threads:
+                active_threads = []
+                for thread in threads:
+                    if thread.isAlive():
+                        active_threads.append(thread)
+                threads = active_threads
 
         self.stdout.write('Finished scraper')
         if failed_urls:
             self.stderr.write('Failures: ')
             for url in failed_urls:
                 self.stderr.write(url)
+
+
+class ThreadedGameParser(threading.Thread):
+
+    def __init__(self, year, force, logger, queue):
+        super(ThreadedGameParser, self).__init__()
+        self.year = year
+        self.force = force
+        self.logger = logger
+        self.queue = queue
+        self.url = self.queue.get()
+
+    def run(self):
+        self.logger.info('Parsing %s', self.url)
+        try:
+            self._parse_game_stats(self.url)
+        except:
+            self.logger.exception('Failed to scrape %s.', self.url)
+        else:
+            self.logger.info('Finished parsing %s', self.url)
+        self.queue.task_done()
 
     def _parse_game_stats(self, url):
         ''' Engine of this operation '''

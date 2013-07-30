@@ -6,7 +6,7 @@ from datetime import datetime
 from django.test import TestCase
 from django.core.management.base import CommandError
 
-from mls_scraper import parser
+from mls_scraper import parser as mls_parser
 from mls_api import models
 from mls_api.management.commands import scrape_game
 
@@ -16,7 +16,7 @@ class TestScrapeGame(TestCase):
 
     def setUp(self):
         super(TestScrapeGame, self).setUp()
-        self.orig_requests = parser.requests
+        self.orig_requests = mls_parser.requests
         self.orig_cmd_requests = scrape_game.requests
         scrape_game.requests = Mock()
         self.stat_html = open(
@@ -25,7 +25,7 @@ class TestScrapeGame(TestCase):
         self.formation_html = open(
             os.path.join(os.path.dirname(__file__), 'test_formation.html')
         ).read()
-        parser.requests = Mock()
+        mls_parser.requests = Mock()
         self.command = scrape_game.Command()
         self.command.logger = logging.getLogger('testing')
         self.command.force = False
@@ -34,7 +34,7 @@ class TestScrapeGame(TestCase):
         self.competition = models.Competition.objects.get(slug='mls-2013')
 
     def tearDown(self):
-        parser.requests = self.orig_requests
+        mls_parser.requests = self.orig_requests
         scrape_game.requests = self.orig_cmd_requests
         super(TestScrapeGame, self).tearDown()
 
@@ -60,21 +60,33 @@ class TestScrapeGame(TestCase):
         if cmd_req:
             scrape_game.requests = requests_mock
         else:
-            parser.requests = requests_mock
+            mls_parser.requests = requests_mock
 
-    def _init_game_stats(self):
-        self.command.game = models.Game(
+    def _init_game_stats(self, force=True, year=2013):
+        threaded_parser = scrape_game.ThreadedGameParser(
+            force=True,
+            logger=Mock(),
+            year=2013,
+            queue=Mock()
+        )
+        threaded_parser.game = models.Game(
             competition=self.competition,
             stat_link='http://www.example.com/stats',
             start_time=datetime.now()
         )
-        self.command.parsed_stats = parser.MLSStatsParser(
+        threaded_parser.parsed_stats = mls_parser.MLSStatsParser(
             'http://www.example.com/stats')
+        return threaded_parser
 
     def test_parse_game_stats(self):
         ''' Test the main engine behind the scraper tool '''
         self._create_requests_mock_return()
-        self.command.year = 2013
+        parser = scrape_game.ThreadedGameParser(
+            force=True,
+            logger=Mock(),
+            year=2013,
+            queue=Mock()
+        )
         methods_to_mock = [
             '_handle_players',
             '_handle_goals',
@@ -86,37 +98,37 @@ class TestScrapeGame(TestCase):
         assert methods_to_mock
         pre_mocks = []
         for method in methods_to_mock:
-            pre_mocks.append(getattr(self.command, method))
-            setattr(self.command, method, Mock())
+            pre_mocks.append(getattr(parser, method))
+            setattr(parser, method, Mock())
 
-        self.command._parse_game_stats('http://www.exmaple.com/stats')
+        parser._parse_game_stats('http://www.exmaple.com/stats')
         for count, method in enumerate(methods_to_mock):
-            assert getattr(self.command, method).called
-            setattr(self.command, method, pre_mocks[count])
+            assert getattr(parser, method).called
+            setattr(parser, method, pre_mocks[count])
 
     def test_handle_teams(self):
         ''' Test the _handle_teams methods '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
+        parser = self._init_game_stats()
+        parser._handle_teams()
         self.assertEqual(
-            self.command.game.home_team,
+            parser.game.home_team,
             models.Team.objects.get(name='Chicago Fire')
         )
         self.assertEqual(
-            self.command.game.away_team,
+            parser.game.away_team,
             models.Team.objects.get(name='Chivas USA')
         )
 
     def test_handle_players(self):
         ''' Test the creation of player objects in _handle_players '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
-        self.command.game.save()
-        self.command._handle_players(
-            self.command.parsed_stats.game.home_team,
-            self.command.game.home_team
+        parser = self._init_game_stats()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team
         )
         self.assertEqual(
             models.Player.objects.count(),
@@ -134,18 +146,18 @@ class TestScrapeGame(TestCase):
     def test_handle_goals(self):
         ''' Tests the functionality of handling goals in the scraper '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
-        self.command.game.save()
-        self.command._handle_players(
-            self.command.parsed_stats.game.home_team,
-            self.command.game.home_team
+        parser = self._init_game_stats()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team
         )
-        self.command._handle_players(
-            self.command.parsed_stats.game.away_team,
-            self.command.game.away_team
+        parser._handle_players(
+            parser.parsed_stats.game.away_team,
+            parser.game.away_team
         )
-        self.command._handle_goals()
+        parser._handle_goals()
         self.assertEqual(
             models.Goal.objects.count(),
             5
@@ -154,18 +166,18 @@ class TestScrapeGame(TestCase):
     def test_handle_bookings(self):
         ''' Test handling the creation of booking events '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
-        self.command.game.save()
-        self.command._handle_players(
-            self.command.parsed_stats.game.home_team,
-            self.command.game.home_team
+        parser = self._init_game_stats()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team
         )
-        self.command._handle_players(
-            self.command.parsed_stats.game.away_team,
-            self.command.game.away_team
+        parser._handle_players(
+            parser.parsed_stats.game.away_team,
+            parser.game.away_team
         )
-        self.command._handle_bookings()
+        parser._handle_bookings()
         self.assertEqual(
             models.Booking.objects.count(),
             3
@@ -174,44 +186,44 @@ class TestScrapeGame(TestCase):
     def test_handle_subs(self):
         ''' Test handling the creation of substitution events '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
-        self.command.game.save()
-        self.command._handle_players(
-            self.command.parsed_stats.game.home_team,
-            self.command.game.home_team
+        parser = self._init_game_stats()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team
         )
-        self.command._handle_players(
-            self.command.parsed_stats.game.away_team,
-            self.command.game.away_team
+        parser._handle_players(
+            parser.parsed_stats.game.away_team,
+            parser.game.away_team
         )
-        self.command._handle_subs()
+        parser._handle_subs()
         self.assertEqual(
             models.Substitution.objects.filter(
-                team=self.command.game.home_team).count(),
+                team=parser.game.home_team).count(),
             3
         )
         self.assertEqual(
             models.Substitution.objects.filter(
-                team=self.command.game.away_team).count(),
+                team=parser.game.away_team).count(),
             3
         )
 
     def test_handle_team_stats(self):
         ''' Test the handling of creating team stats '''
         self._create_requests_mock_return()
-        self._init_game_stats()
-        self.command._handle_teams()
-        self.command.game.save()
-        self.command._handle_players(
-            self.command.parsed_stats.game.home_team,
-            self.command.game.home_team
+        parser = self._init_game_stats()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team
         )
-        self.command._handle_players(
-            self.command.parsed_stats.game.away_team,
-            self.command.game.away_team
+        parser._handle_players(
+            parser.parsed_stats.game.away_team,
+            parser.game.away_team
         )
-        self.command._handle_team_stats()
+        parser._handle_team_stats()
         self.assertEqual(
             models.StatSet.objects.count(),
             2
@@ -266,9 +278,13 @@ class TestScrapeGame(TestCase):
     def test_handle_formations(self):
         ''' Test the formation creation functionality '''
         self._create_requests_mock_return()
-        self.command.force = True
-        self.command.year = 2013
-        self.command._parse_game_stats('http://www.exmaple.com/stats')
+        parser = scrape_game.ThreadedGameParser(
+            force=True,
+            year=2013,
+            logger=Mock(),
+            queue=Mock()
+        )
+        parser._parse_game_stats('http://www.exmaple.com/stats')
         self.assertEqual(models.Formation.objects.count(), 2)
         fire_formation = models.Formation.objects.get(
             team__slug='chicago-fire')

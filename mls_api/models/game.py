@@ -32,11 +32,11 @@ class Game(BaseModel):
         return own_goals + goals
 
     @property
-    def home_score(self):
+    def _home_score(self):
         return self._retrieve_goal_count(self.home_team)
 
     @property
-    def away_score(self):
+    def _away_score(self):
         return self._retrieve_goal_count(self.away_team)
 
     class Meta:
