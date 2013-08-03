@@ -4,8 +4,6 @@ from mls_api.models.base import BaseModel
 
 class Game(BaseModel):
     ''' The glue for all of the stats '''
-    home_team = models.ForeignKey('Team', related_name="home_team")
-    away_team = models.ForeignKey('Team', related_name="away_team")
     start_time = models.DateTimeField(blank=True, null=True)
     home_score = models.IntegerField(blank=True, null=True)
     away_score = models.IntegerField(blank=True, null=True)
@@ -38,6 +36,14 @@ class Game(BaseModel):
     @property
     def _away_score(self):
         return self._retrieve_goal_count(self.away_team)
+
+    @property
+    def home_team(self):
+        return self.gameteam_set.get(home=True)
+
+    @property
+    def away_team(self):
+        return self.gameteam_set.get(home=False)
 
     class Meta:
         ordering = ('-start_time',)
