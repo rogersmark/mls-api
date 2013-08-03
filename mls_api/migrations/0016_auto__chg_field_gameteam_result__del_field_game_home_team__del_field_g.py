@@ -9,8 +9,6 @@ class Migration(SchemaMigration):
 
     def forwards(self, orm):
 
-        # Changing field 'GameTeam.result'
-        db.alter_column(u'mls_api_gameteam', 'result_id', self.gf('django.db.models.fields.related.ForeignKey')(default=1, to=orm['mls_api.Result']))
         # Deleting field 'Game.home_team'
         db.delete_column(u'mls_api_game', 'home_team_id')
 
@@ -20,8 +18,6 @@ class Migration(SchemaMigration):
 
     def backwards(self, orm):
 
-        # Changing field 'GameTeam.result'
-        db.alter_column(u'mls_api_gameteam', 'result_id', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['mls_api.Result'], null=True))
 
         # User chose to not deal with backwards NULL issues for 'Game.home_team'
         raise RuntimeError("Cannot reverse this migration. 'Game.home_team' and its values cannot be restored.")
@@ -106,7 +102,7 @@ class Migration(SchemaMigration):
             'home': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
-            'result': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['mls_api.Result']"}),
+            'result': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['mls_api.Result']", 'null': 'True'}),
             'team': ('django.db.models.fields.related.ForeignKey', [], {'to': "orm['mls_api.Team']"})
         },
         'mls_api.goal': {

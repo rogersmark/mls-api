@@ -30,7 +30,7 @@ class GameTeam(BaseModel):
 
     team = models.ForeignKey('Team')
     game = models.ForeignKey('Game')
-    result = models.ForeignKey('Result')
+    result = models.ForeignKey('Result', null=True)
     home = models.BooleanField(default=False)
 
     def __unicode__(self):

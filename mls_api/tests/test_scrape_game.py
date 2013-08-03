@@ -94,6 +94,7 @@ class TestScrapeGame(TestCase):
             '_handle_team_stats',
             '_handle_formations',
             '_handle_subs',
+            '_handle_result',
         ]
         assert methods_to_mock
         pre_mocks = []
@@ -110,13 +111,14 @@ class TestScrapeGame(TestCase):
         ''' Test the _handle_teams methods '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         self.assertEqual(
-            parser.game.home_team,
+            parser.game.home_team.team,
             models.Team.objects.get(name='Chicago Fire')
         )
         self.assertEqual(
-            parser.game.away_team,
+            parser.game.away_team.team,
             models.Team.objects.get(name='Chivas USA')
         )
 
@@ -124,11 +126,12 @@ class TestScrapeGame(TestCase):
         ''' Test the creation of player objects in _handle_players '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         parser.game.save()
         parser._handle_players(
             parser.parsed_stats.game.home_team,
-            parser.game.home_team
+            parser.game.home_team.team
         )
         self.assertEqual(
             models.Player.objects.count(),
@@ -147,15 +150,16 @@ class TestScrapeGame(TestCase):
         ''' Tests the functionality of handling goals in the scraper '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         parser.game.save()
         parser._handle_players(
             parser.parsed_stats.game.home_team,
-            parser.game.home_team
+            parser.game.home_team.team
         )
         parser._handle_players(
             parser.parsed_stats.game.away_team,
-            parser.game.away_team
+            parser.game.away_team.team
         )
         parser._handle_goals()
         self.assertEqual(
@@ -167,15 +171,16 @@ class TestScrapeGame(TestCase):
         ''' Test handling the creation of booking events '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         parser.game.save()
         parser._handle_players(
             parser.parsed_stats.game.home_team,
-            parser.game.home_team
+            parser.game.home_team.team
         )
         parser._handle_players(
             parser.parsed_stats.game.away_team,
-            parser.game.away_team
+            parser.game.away_team.team
         )
         parser._handle_bookings()
         self.assertEqual(
@@ -187,15 +192,16 @@ class TestScrapeGame(TestCase):
         ''' Test handling the creation of substitution events '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         parser.game.save()
         parser._handle_players(
             parser.parsed_stats.game.home_team,
-            parser.game.home_team
+            parser.game.home_team.team
         )
         parser._handle_players(
             parser.parsed_stats.game.away_team,
-            parser.game.away_team
+            parser.game.away_team.team
         )
         parser._handle_subs()
         self.assertEqual(
@@ -213,15 +219,16 @@ class TestScrapeGame(TestCase):
         ''' Test the handling of creating team stats '''
         self._create_requests_mock_return()
         parser = self._init_game_stats()
+        parser.game.save()
         parser._handle_teams()
         parser.game.save()
         parser._handle_players(
             parser.parsed_stats.game.home_team,
-            parser.game.home_team
+            parser.game.home_team.team
         )
         parser._handle_players(
             parser.parsed_stats.game.away_team,
-            parser.game.away_team
+            parser.game.away_team.team
         )
         parser._handle_team_stats()
         self.assertEqual(
@@ -289,3 +296,36 @@ class TestScrapeGame(TestCase):
         fire_formation = models.Formation.objects.get(
             team__slug='chicago-fire')
         self.assertEqual(fire_formation.formation_str, '4-2-3-1')
+
+    def test_handle_result(self):
+        self._create_requests_mock_return()
+        parser = self._init_game_stats()
+        parser.game.save()
+        parser._handle_teams()
+        parser.game.save()
+        parser._handle_players(
+            parser.parsed_stats.game.home_team,
+            parser.game.home_team.team
+        )
+        parser._handle_players(
+            parser.parsed_stats.game.away_team,
+            parser.game.away_team.team
+        )
+        parser._handle_goals()
+        parser._handle_result()
+        self.assertEqual(
+            parser.game.home_team.result,
+            models.Result.objects.get(code=models.Result.LOSS)
+        )
+        self.assertEqual(
+            parser.game.away_team.result,
+            models.Result.objects.get(code=models.Result.WIN)
+        )
+        self.assertEqual(
+            parser.game.home_score,
+            1
+        )
+        self.assertEqual(
+            parser.game.away_score,
+            4
+        )
