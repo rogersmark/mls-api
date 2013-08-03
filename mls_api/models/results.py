@@ -12,5 +12,8 @@ class Result(BaseModel):
     code = models.SlugField()
     points = models.IntegerField()
 
+    def __unicode__(self):
+        return u'%s' % self.name
+
     class Meta:
         app_label = 'mls_api'
