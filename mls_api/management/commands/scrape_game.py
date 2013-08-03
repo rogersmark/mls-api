@@ -149,15 +149,16 @@ class ThreadedGameParser(threading.Thread):
             competition=competition,
             start_time=self.parsed_stats.game.game_date
         )
+        self.game.save()
         self._handle_teams()
         self.game.save()
         self._handle_players(
             self.parsed_stats.game.home_team,
-            self.game.home_team
+            self.game.home_team.team
         )
         self._handle_players(
             self.parsed_stats.game.away_team,
-            self.game.away_team
+            self.game.away_team.team
         )
         self.game.save()
         self._handle_goals()
@@ -170,6 +171,8 @@ class ThreadedGameParser(threading.Thread):
         self.game.save()
         self._handle_formations()
         self.game.save()
+        self._handle_result()
+        self.game.save()
 
     def _handle_teams(self):
         home_team, created = models.Team.objects.get_or_create(
@@ -180,8 +183,16 @@ class ThreadedGameParser(threading.Thread):
             name=self.parsed_stats.game.away_team.name,
             slug=slugify(self.parsed_stats.game.away_team.name)
         )
-        self.game.home_team = home_team
-        self.game.away_team = away_team
+        models.GameTeam.objects.create(
+            game=self.game,
+            team=home_team,
+            home=True
+        )
+        models.GameTeam.objects.create(
+            game=self.game,
+            team=away_team,
+            home=False
+        )
 
     def _handle_players(self, team_stats, team):
         for player in team_stats.players:
@@ -343,11 +354,11 @@ class ThreadedGameParser(threading.Thread):
     def _handle_team_stats(self):
         ''' Handle all of the creation of StatSet objects '''
         self._parse_team_stats(
-            self.game.home_team,
+            self.game.home_team.team,
             self.parsed_stats.game.home_team.stats
         )
         self._parse_team_stats(
-            self.game.away_team,
+            self.game.away_team.team,
             self.parsed_stats.game.away_team.stats
         )
 
@@ -382,10 +393,29 @@ class ThreadedGameParser(threading.Thread):
     def _handle_formations(self):
         ''' Handles creating the formations for the match '''
         self._parse_formations(
-            self.game.home_team,
+            self.game.home_team.team,
             self.parsed_stats.game.home_team.formation
         )
         self._parse_formations(
-            self.game.away_team,
+            self.game.away_team.team,
             self.parsed_stats.game.away_team.formation
         )
+
+    def _handle_result(self):
+        ''' Handle filling out the results '''
+        win = models.Result.objects.get(code=models.Result.WIN)
+        draw = models.Result.objects.get(code=models.Result.DRAW)
+        loss = models.Result.objects.get(code=models.Result.LOSS)
+        home_team = self.game.home_team
+        away_team = self.game.away_team
+        if self.game.home_score > self.game.away_score:
+            home_team.result = win
+            away_team.result = loss
+        elif self.game.away_score > self.game.home_score:
+            home_team.result = loss
+            away_team.result = win
+        elif self.game.home_score == self.game.away_score:
+            home_team.result = away_team.result = draw
+
+        home_team.save()
+        away_team.save()
