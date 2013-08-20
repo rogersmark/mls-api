@@ -21,6 +21,17 @@ to your list of INSTALLED_APPS in your Django project. Then just run:
 
 to add the necessary tables to your database. 
 
+### Alternate Installation
+
+While the `mls_api` project can be installed and added to your existing Django
+project, you can also use the Django project included in this repo. To do that
+you'll simply want to do the following:
+
+* Clone this repo: `git clone https://github.com/f4nt/mls-api`
+* `cd` into the `mls-api` directory
+* Make use of the `manage.py` file like you would with any Django project, such
+as running the `scrape_game` command below.
+
 ### Scraper Usage
 
 This app includes a management command that will parse stats from the MLSSoccer.com 
@@ -47,4 +58,8 @@ Finally, you can give the script a specific stats link for it to parse:
 
     python manage.py scrape_game http://www.example.com/stats
 
+#### Scraper Options
 
+* `-f`, `--force`: Forces the scraper to overwrite existing games.
+* `-y`, `--year`: Year of competition to parse
+* `-w`, `--workers`: Number of worker threads to parse with (Default: 5)
