@@ -45,6 +45,14 @@ class Game(BaseModel):
     def away_team(self):
         return self.gameteam_set.get(home=False)
 
+    @property
+    def home_stats(self):
+        return self.statset_set.get(team=self.home_team.team)
+
+    @property
+    def away_stats(self):
+        return self.statset_set.get(team=self.away_team.team)
+
     class Meta:
         ordering = ('-start_time',)
         app_label = 'mls_api'

@@ -15,16 +15,6 @@ class GameAdmin(admin.ModelAdmin):
     pass
 
 
-class HomeGameTabularInline(admin.TabularInline):
-    model = models.Game
-    fk_name = 'home_team'
-
-
-class AwayGameTabularInline(admin.TabularInline):
-    model = models.Game
-    fk_name = 'away_team'
-
-
 class CompetitionAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
 
@@ -33,8 +23,6 @@ class TeamAdmin(admin.ModelAdmin):
     prepopulated_fields = {'slug': ('name',)}
     inlines = [
         PlayerTabularInline,
-        HomeGameTabularInline,
-        AwayGameTabularInline
     ]
 
 
