@@ -58,4 +58,8 @@ Finally, you can give the script a specific stats link for it to parse:
 
     python manage.py scrape_game http://www.example.com/stats
 
+#### Scraper Options
 
+`-f`, `--force`: Forces the scraper to overwrite existing games.
+`-y`, `--year`: Year of competition to parse
+`-w`, `--workers`: Number of worker threads to parse with (Default: 5)
